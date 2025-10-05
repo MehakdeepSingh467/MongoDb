@@ -1,0 +1,95 @@
+// server.js
+
+const express = require('express');
+const mongoose = require('mongoose');
+const app = express();
+
+app.use(express.json());
+
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost:27017/catalogDB', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('Connection error:', err));
+
+// Schema & Model
+const variantSchema = new mongoose.Schema({
+  color: String,
+  size: String,
+  stock: Number
+});
+
+const productSchema = new mongoose.Schema({
+  name: String,
+  price: Number,
+  category: String,
+  variants: [variantSchema]
+});
+
+const Product = mongoose.model('Product', productSchema);
+
+// Sample Insert
+app.post('/products/sample', async (req, res) => {
+  try {
+    const sampleProducts = [
+      {
+        name: 'Winter Jacket',
+        price: 200,
+        category: 'Apparel',
+        variants: [
+          { color: 'Black', size: 'S', stock: 20 },
+          { color: 'Gray', size: 'M', stock: 12 }
+        ]
+      },
+      {
+        name: 'Running Shoes',
+        price: 120,
+        category: 'Footwear',
+        variants: [
+          { color: 'Red', size: 'M', stock: 10 },
+          { color: 'Blue', size: 'L', stock: 8 }
+        ]
+      }
+    ];
+    await Product.insertMany(sampleProducts);
+    res.status(201).send({ message: 'Sample products inserted.' });
+  } catch (err) {
+    res.status(500).send({ error: err.message });
+  }
+});
+
+// Get all products
+app.get('/products', async (req, res) => {
+  try {
+    const products = await Product.find();
+    res.status(200).send(products);
+  } catch (err) {
+    res.status(500).send({ error: err.message });
+  }
+});
+
+// Filter by category
+app.get('/products/category/:category', async (req, res) => {
+  try {
+    const products = await Product.find({ category: req.params.category });
+    res.status(200).send(products);
+  } catch (err) {
+    res.status(500).send({ error: err.message });
+  }
+});
+
+// Project variant details by color
+app.get('/products/by-color/:color', async (req, res) => {
+  try {
+    const products = await Product.find({ 'variants.color': req.params.color });
+    res.status(200).send(products);
+  } catch (err) {
+    res.status(500).send({ error: err.message });
+  }
+});
+
+// Server
+app.listen(3000, () => {
+  console.log('Server running on http://localhost:3000');
+});
