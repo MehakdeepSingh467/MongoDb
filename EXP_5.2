@@ -1,0 +1,91 @@
+// server.js
+
+const express = require('express');
+const mongoose = require('mongoose');
+const app = express();
+
+app.use(express.json());
+
+// MongoDB connection
+mongoose.connect('mongodb://localhost:27017/studentDB', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('Connection error:', err));
+
+// Model
+const studentSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  age: { type: Number, required: true, min: 1 },
+  course: { type: String, required: true }
+});
+
+const Student = mongoose.model('Student', studentSchema);
+
+// Controller functions
+const studentController = {
+  create: async (req, res) => {
+    try {
+      const student = new Student(req.body);
+      await student.save();
+      res.status(201).send(student);
+    } catch (err) {
+      res.status(400).send({ error: err.message });
+    }
+  },
+
+  getAll: async (req, res) => {
+    try {
+      const students = await Student.find();
+      res.status(200).send(students);
+    } catch (err) {
+      res.status(500).send({ error: err.message });
+    }
+  },
+
+  getById: async (req, res) => {
+    try {
+      const student = await Student.findById(req.params.id);
+      if (!student) return res.status(404).send({ message: 'Student not found' });
+      res.status(200).send(student);
+    } catch (err) {
+      res.status(400).send({ error: err.message });
+    }
+  },
+
+  update: async (req, res) => {
+    try {
+      const updated = await Student.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        { new: true, runValidators: true }
+      );
+      if (!updated) return res.status(404).send({ message: 'Student not found' });
+      res.status(200).send(updated);
+    } catch (err) {
+      res.status(400).send({ error: err.message });
+    }
+  },
+
+  delete: async (req, res) => {
+    try {
+      const deleted = await Student.findByIdAndDelete(req.params.id);
+      if (!deleted) return res.status(404).send({ message: 'Student not found' });
+      res.status(200).send({ message: 'Student deleted.', student: deleted });
+    } catch (err) {
+      res.status(400).send({ error: err.message });
+    }
+  }
+};
+
+// Routes
+app.post('/students', studentController.create);
+app.get('/students', studentController.getAll);
+app.get('/students/:id', studentController.getById);
+app.put('/students/:id', studentController.update);
+app.delete('/students/:id', studentController.delete);
+
+// Server
+app.listen(3000, () => {
+  console.log('Server running on http://localhost:3000');
+});
